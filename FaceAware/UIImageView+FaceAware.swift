@@ -9,6 +9,24 @@
 import UIKit
 import ObjectiveC
 
+public typealias CompletionBlock = () -> Void
+
+var ValidKey: UInt8 = 0
+var ValidWrapper: UInt8 = 1
+
+class BlockWrapper: NSObject {
+    
+    var completionBlock: CompletionBlock? = { () -> Void in }
+    
+    init(block: CompletionBlock?) {
+        self.completionBlock = block
+    }
+    
+    func invokeBlock() -> CompletionBlock? {
+        return completionBlock
+    }
+}
+
 @IBDesignable
 public extension UIImageView {
     
@@ -40,11 +58,27 @@ public extension UIImageView {
         }
     }
     
-    public func set(image: UIImage?, focusOnFaces: Bool) {
+    fileprivate var wrapper: BlockWrapper? {
+        return objc_getAssociatedObject(self, &ValidWrapper) as? BlockWrapper
+    }
+    
+    fileprivate var completion: CompletionBlock? {
+        set {
+            let wrapper = BlockWrapper(block: completion)
+            objc_setAssociatedObject(self, &ValidWrapper, wrapper, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        } get {
+            objc_getAssociatedObject(self, &ValidKey)
+            guard let wrapper = wrapper else { return nil }
+            return wrapper.invokeBlock()
+        }
+    }
+    
+    public func set(image: UIImage?, focusOnFaces: Bool, completion: CompletionBlock? = nil ) {
         guard focusOnFaces == true else {
             self.removeImageLayer(image: image)
             return
         }
+        self.completion = completion
         setImageAndFocusOnFaces(image: image)
     }
     
@@ -153,6 +187,8 @@ public extension UIImageView {
             let layer = self.imageLayer()
             layer.contents = newImage.cgImage
             layer.frame = CGRect(x: offset.x, y: offset.y, width: finalSize.width, height: finalSize.height)
+            
+            completion?()
         }
     }
     
@@ -173,6 +209,7 @@ public extension UIImageView {
             // avoid redundant layer when focus on faces for the image of cell specified in UITableView
             self.imageLayer().removeFromSuperlayer()
             self.image = image
+            self.completion?()
         }
     }
     
