@@ -9,22 +9,31 @@
 import UIKit
 import ObjectiveC
 
-public typealias CompletionBlock = () -> Void
+public typealias GetCompletionBlock = (_ image: UIImage?) -> Void
+public typealias SetCompletionBlock = () -> Void
 
-var ValidKey: UInt8 = 0
 var ValidWrapper: UInt8 = 1
+var SetValidKey: UInt8 = 0
+var GetValidKey: UInt8 = 2
 
 class BlockWrapper: NSObject {
     
-    var completionBlock: CompletionBlock? = { () -> Void in }
+    var getCompletionBlock: GetCompletionBlock? = nil
+    var setCompletionBlock: SetCompletionBlock? = nil
     
-    init(block: CompletionBlock?) {
-        self.completionBlock = block
+    init(getBlock: GetCompletionBlock? = nil, setBlock: SetCompletionBlock? = nil) {
+        self.getCompletionBlock = getBlock
+        self.setCompletionBlock = setBlock
     }
     
-    func invokeBlock() -> CompletionBlock? {
-        return completionBlock
+    func invokeGetBlock() -> GetCompletionBlock? {
+        return getCompletionBlock
     }
+    
+    func invokeSetBlock() -> SetCompletionBlock? {
+        return setCompletionBlock
+    }
+    
 }
 
 @IBDesignable
@@ -62,23 +71,39 @@ public extension UIImageView {
         return objc_getAssociatedObject(self, &ValidWrapper) as? BlockWrapper
     }
     
-    fileprivate var completion: CompletionBlock? {
+    fileprivate var getCompletion: GetCompletionBlock? {
         set {
-            let wrapper = BlockWrapper(block: completion)
+            let wrapper = BlockWrapper(getBlock: getCompletion)
             objc_setAssociatedObject(self, &ValidWrapper, wrapper, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         } get {
-            objc_getAssociatedObject(self, &ValidKey)
+            objc_getAssociatedObject(self, &GetValidKey)
             guard let wrapper = wrapper else { return nil }
-            return wrapper.invokeBlock()
+            return wrapper.invokeGetBlock()
         }
     }
     
-    public func set(image: UIImage?, focusOnFaces: Bool, completion: CompletionBlock? = nil ) {
+    fileprivate var setCompletion: SetCompletionBlock? {
+        set {
+            let wrapper = BlockWrapper(setBlock: setCompletion)
+            objc_setAssociatedObject(self, &ValidWrapper, wrapper, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        } get {
+            objc_getAssociatedObject(self, &SetValidKey)
+            guard let wrapper = wrapper else { return nil }
+            return wrapper.invokeSetBlock()
+        }
+    }
+    
+    public func getFaceRecognizeImage(from image: UIImage?, completion: GetCompletionBlock?) {
+        self.getCompletion = completion
+        setImageAndFocusOnFaces(image: image)
+    }
+    
+    public func set(image: UIImage?, focusOnFaces: Bool, completion: SetCompletionBlock? = nil ) {
         guard focusOnFaces == true else {
             self.removeImageLayer(image: image)
             return
         }
-        self.completion = completion
+        self.setCompletion = completion
         setImageAndFocusOnFaces(image: image)
     }
     
@@ -182,13 +207,17 @@ public extension UIImageView {
         }
 
         DispatchQueue.main.sync {
-            self.image = newImage
-            
-            let layer = self.imageLayer()
-            layer.contents = newImage.cgImage
-            layer.frame = CGRect(x: offset.x, y: offset.y, width: finalSize.width, height: finalSize.height)
-            
-            completion?()
+            if let getCompletion = getCompletion {
+                getCompletion(newImage)
+            } else {
+                self.image = newImage
+                
+                let layer = self.imageLayer()
+                layer.contents = newImage.cgImage
+                layer.frame = CGRect(x: offset.x, y: offset.y, width: finalSize.width, height: finalSize.height)
+                
+                setCompletion?()
+            }
         }
     }
     
@@ -207,9 +236,13 @@ public extension UIImageView {
     private func removeImageLayer(image: UIImage?) {
         DispatchQueue.main.async {
             // avoid redundant layer when focus on faces for the image of cell specified in UITableView
-            self.imageLayer().removeFromSuperlayer()
-            self.image = image
-            self.completion?()
+            if let getCompletion = self.getCompletion {
+                getCompletion(image)
+            } else {
+                self.imageLayer().removeFromSuperlayer()
+                self.image = image
+                self.setCompletion?()
+            }
         }
     }
     
