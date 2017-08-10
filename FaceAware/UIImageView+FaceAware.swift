@@ -254,11 +254,11 @@ public extension UIImageView {
         
         if rect.origin.x != 0 {
             let shift = ceil(rect.origin.x * cgwidth / rect.width)
-            posX = cgwidth / 2 + shift
+            posX = (cgwidth + shift) / 2
         }
         if rect.origin.y != 0 {
             let shift = ceil(rect.origin.y * cgheight / rect.height)
-            posY = cgheight / 2 + shift
+            posY = (cgheight + shift) / 2
         }
 
         let rect: CGRect = CGRect(x: posX, y: posY, width: cgwidth, height: cgheight)
@@ -270,7 +270,20 @@ public extension UIImageView {
         // Create a new image based on the imageRef and rotate back to the original orientation
         let image = UIImage.init(cgImage: imageRef, scale: image.scale, orientation: image.imageOrientation)
         
-        return image
+        let resultWidth: CGFloat = rect.height * self.bounds.width / self.bounds.height
+        let resultRect: CGRect = CGRect.init(x: (rect.width - resultWidth) / 2,
+                                             y: 0,
+                                             width: resultWidth,
+                                             height: rect.height)
+        
+        // Create bitmap image from context using the rect
+        guard let contextResultCgImage = image.cgImage,
+            let imageResultRef: CGImage = contextResultCgImage.cropping(to: resultRect) else { return nil }
+        
+        // Create a new image based on the imageRef and rotate back to the original orientation
+        let resultImage = UIImage.init(cgImage: imageResultRef, scale: image.scale, orientation: image.imageOrientation)
+        
+        return resultImage
     }
     
 }
