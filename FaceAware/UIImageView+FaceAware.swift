@@ -12,35 +12,16 @@ import ObjectiveC
 public typealias GetCompletionBlock = (_ image: UIImage?) -> Void
 public typealias SetCompletionBlock = () -> Void
 
-var ValidWrapper: UInt8 = 1
 var SetValidKey: UInt8 = 0
-var GetValidKey: UInt8 = 2
-
-class BlockWrapper: NSObject {
-    
-    var getCompletionBlock: GetCompletionBlock? = nil
-    var setCompletionBlock: SetCompletionBlock? = nil
-    
-    init(getBlock: GetCompletionBlock? = nil, setBlock: SetCompletionBlock? = nil) {
-        self.getCompletionBlock = getBlock
-        self.setCompletionBlock = setBlock
-    }
-    
-    func invokeGetBlock() -> GetCompletionBlock? {
-        return getCompletionBlock
-    }
-    
-    func invokeSetBlock() -> SetCompletionBlock? {
-        return setCompletionBlock
-    }
-    
-}
+var GetValidKey: UInt8 = 1
 
 @IBDesignable
 public extension UIImageView {
     
     private struct AssociatedCustomProperties {
         static var debugFaceAware: Bool = false
+        static var setCompletion = "setCompletionKey"
+        static var getCompletion = "getCompletionKey"
     }
     
     @IBInspectable
@@ -67,29 +48,20 @@ public extension UIImageView {
         }
     }
     
-    fileprivate var wrapper: BlockWrapper? {
-        return objc_getAssociatedObject(self, &ValidWrapper) as? BlockWrapper
-    }
-    
     fileprivate var getCompletion: GetCompletionBlock? {
         set {
-            let wrapper = BlockWrapper(getBlock: getCompletion)
-            objc_setAssociatedObject(self, &ValidWrapper, wrapper, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        } get {
-            objc_getAssociatedObject(self, &GetValidKey)
-            guard let wrapper = wrapper else { return nil }
-            return wrapper.invokeGetBlock()
+            objc_setAssociatedObject(self, &AssociatedCustomProperties.getCompletion, newValue, objc_AssociationPolicy.OBJC_ASSOCIATION_COPY_NONATOMIC)
+        }
+        get {
+            return objc_getAssociatedObject(self, &AssociatedCustomProperties.getCompletion) as? GetCompletionBlock
         }
     }
     
     fileprivate var setCompletion: SetCompletionBlock? {
         set {
-            let wrapper = BlockWrapper(setBlock: setCompletion)
-            objc_setAssociatedObject(self, &ValidWrapper, wrapper, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            objc_setAssociatedObject(self, &AssociatedCustomProperties.setCompletion, newValue, objc_AssociationPolicy.OBJC_ASSOCIATION_COPY_NONATOMIC)
         } get {
-            objc_getAssociatedObject(self, &SetValidKey)
-            guard let wrapper = wrapper else { return nil }
-            return wrapper.invokeSetBlock()
+            return objc_getAssociatedObject(self, &AssociatedCustomProperties.setCompletion) as? SetCompletionBlock
         }
     }
     
@@ -208,7 +180,10 @@ public extension UIImageView {
 
         DispatchQueue.main.sync {
             if let getCompletion = getCompletion {
-                getCompletion(newImage)
+                let rect = CGRect(x: offset.x, y: offset.y, width: finalSize.width, height: finalSize.height)
+                guard let croppedImage = cropToBounds(image: newImage, rect: rect) else { return }
+                
+                getCompletion(croppedImage)
             } else {
                 self.image = newImage
                 
@@ -255,6 +230,38 @@ public extension UIImageView {
             }
         }
         return nil
+    }
+    
+    private func cropToBounds(image: UIImage, rect: CGRect) -> UIImage? {
+        
+        guard let cgImage = image.cgImage else { return nil }
+        let contextImage = UIImage(cgImage: cgImage)
+        let contextSize: CGSize = contextImage.size
+
+        let posX: CGFloat = rect.origin.x
+        let posY: CGFloat = rect.origin.y
+        var cgwidth: CGFloat = CGFloat(rect.width)
+        var cgheight: CGFloat = CGFloat(rect.height)
+
+        // See what size is longer and create the center off of that
+        if contextSize.width > contextSize.height {
+            cgwidth = contextSize.height
+            cgheight = contextSize.height
+        } else {
+            cgwidth = contextSize.width
+            cgheight = contextSize.width
+        }
+
+        let rect: CGRect = CGRect(x: posX, y: posY, width: cgwidth, height: cgheight)
+        
+        // Create bitmap image from context using the rect
+        guard let contextCgImage = contextImage.cgImage,
+            let imageRef: CGImage = contextCgImage.cropping(to: rect) else { return nil }
+        
+        // Create a new image based on the imageRef and rotate back to the original orientation
+        let image = UIImage.init(cgImage: imageRef, scale: image.scale, orientation: image.imageOrientation)
+        
+        return image
     }
     
 }
