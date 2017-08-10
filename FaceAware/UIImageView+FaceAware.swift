@@ -247,18 +247,27 @@ public extension UIImageView {
         if contextSize.width > contextSize.height {
             cgwidth = contextSize.height
             cgheight = contextSize.height
+            
+            if rect.origin.x != 0 {
+                let shift = ceil(rect.origin.x * cgwidth / rect.width)
+                posX = (cgwidth + shift) / 2
+            }
+            if rect.origin.y != 0 {
+                let shift = ceil(rect.origin.y * cgheight / rect.height)
+                posY = (cgheight + shift) / 2
+            }
         } else {
             cgwidth = contextSize.width
             cgheight = contextSize.width
-        }
-        
-        if rect.origin.x != 0 {
-            let shift = ceil(rect.origin.x * cgwidth / rect.width)
-            posX = (cgwidth + shift) / 2
-        }
-        if rect.origin.y != 0 {
-            let shift = ceil(rect.origin.y * cgheight / rect.height)
-            posY = (cgheight + shift) / 2
+            
+            if rect.origin.x != 0 {
+                let shift = ceil(rect.origin.x * cgwidth / rect.width)
+                posX = shift
+            }
+            if rect.origin.y != 0 {
+                let shift = ceil(rect.origin.y * cgheight / rect.height)
+                posY = shift
+            }
         }
 
         let rect: CGRect = CGRect(x: posX, y: posY, width: cgwidth, height: cgheight)
