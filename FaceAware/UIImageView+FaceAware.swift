@@ -237,39 +237,21 @@ public extension UIImageView {
         guard let cgImage = image.cgImage else { return nil }
         let contextImage = UIImage(cgImage: cgImage)
         let contextSize: CGSize = contextImage.size
-
-        var posX: CGFloat = 0
-        var posY: CGFloat = 0
+        
+        var posX: CGFloat = -rect.origin.x * contextSize.height / contextSize.width
+        var posY: CGFloat = -rect.origin.y * contextSize.height / contextSize.width
         var cgwidth: CGFloat = CGFloat(rect.width)
         var cgheight: CGFloat = CGFloat(rect.height)
-
+        
         // See what size is longer and create the center off of that
         if contextSize.width > contextSize.height {
             cgwidth = contextSize.height
             cgheight = contextSize.height
-            
-            if rect.origin.x != 0 {
-                let shift = ceil(rect.origin.x * cgwidth / rect.width)
-                posX = (cgwidth + shift) / 2
-            }
-            if rect.origin.y != 0 {
-                let shift = ceil(rect.origin.y * cgheight / rect.height)
-                posY = (cgheight + shift) / 2
-            }
         } else {
             cgwidth = contextSize.width
             cgheight = contextSize.width
-            
-            if rect.origin.x != 0 {
-                let shift = ceil(rect.origin.x * cgwidth / rect.width)
-                posX = shift
-            }
-            if rect.origin.y != 0 {
-                let shift = ceil(rect.origin.y * cgheight / rect.height)
-                posY = shift
-            }
         }
-
+        
         let rect: CGRect = CGRect(x: posX, y: posY, width: cgwidth, height: cgheight)
         
         // Create bitmap image from context using the rect
@@ -279,27 +261,7 @@ public extension UIImageView {
         // Create a new image based on the imageRef and rotate back to the original orientation
         let image = UIImage.init(cgImage: imageRef, scale: image.scale, orientation: image.imageOrientation)
         
-        var resultWidth = rect.width
-        var resultHeight = rect.height
-        
-        if self.bounds.height > self.bounds.width {
-            resultWidth = rect.height * self.bounds.width / self.bounds.height
-        } else {
-            resultHeight = rect.width * self.bounds.height / self.bounds.width
-        }
-        let resultRect: CGRect = CGRect.init(x: (rect.width - resultWidth) / 2,
-                                             y: (rect.height - resultHeight) / 2,
-                                             width: resultWidth,
-                                             height: resultHeight)
-        
-        // Create bitmap image from context using the rect
-        guard let contextResultCgImage = image.cgImage,
-            let imageResultRef: CGImage = contextResultCgImage.cropping(to: resultRect) else { return nil }
-        
-        // Create a new image based on the imageRef and rotate back to the original orientation
-        let resultImage = UIImage.init(cgImage: imageResultRef, scale: image.scale, orientation: image.imageOrientation)
-        
-        return resultImage
+        return image
     }
     
 }
