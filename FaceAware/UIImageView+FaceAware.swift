@@ -238,8 +238,8 @@ public extension UIImageView {
         let contextImage = UIImage(cgImage: cgImage)
         let contextSize: CGSize = contextImage.size
 
-        let posX: CGFloat = rect.origin.x
-        let posY: CGFloat = rect.origin.y
+        var posX: CGFloat = 0
+        var posY: CGFloat = 0
         var cgwidth: CGFloat = CGFloat(rect.width)
         var cgheight: CGFloat = CGFloat(rect.height)
 
@@ -250,6 +250,15 @@ public extension UIImageView {
         } else {
             cgwidth = contextSize.width
             cgheight = contextSize.width
+        }
+        
+        if rect.origin.x != 0 {
+            let shift = ceil(rect.origin.x * cgwidth / rect.width)
+            posX = cgwidth / 2 + shift
+        }
+        if rect.origin.y != 0 {
+            let shift = ceil(rect.origin.y * cgheight / rect.height)
+            posY = cgheight / 2 + shift
         }
 
         let rect: CGRect = CGRect(x: posX, y: posY, width: cgwidth, height: cgheight)
