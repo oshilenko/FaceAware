@@ -238,8 +238,11 @@ public extension UIImageView {
         let contextImage = UIImage(cgImage: cgImage)
         let contextSize: CGSize = contextImage.size
         
-        var posX: CGFloat = -rect.origin.x * contextSize.height / contextSize.width
-        var posY: CGFloat = -rect.origin.y * contextSize.height / contextSize.width
+        guard abs(rect.origin.x) < rect.width,
+            abs(rect.origin.y) < rect.height else { return image }
+        
+        let posX: CGFloat = -rect.origin.x * contextSize.width / rect.width
+        let posY: CGFloat = -rect.origin.y * contextSize.height / rect.height
         var cgwidth: CGFloat = CGFloat(rect.width)
         var cgheight: CGFloat = CGFloat(rect.height)
         
