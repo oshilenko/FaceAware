@@ -9,7 +9,7 @@
 import UIKit
 import ObjectiveC
 
-public typealias GetCompletionBlock = (_ image: UIImage?) -> Void
+public typealias GetCompletionBlock = (_ image: UIImage?, _ url: URL?) -> Void
 public typealias SetCompletionBlock = () -> Void
 
 var SetValidKey: UInt8 = 0
@@ -22,6 +22,7 @@ public extension UIImageView {
         static var debugFaceAware: Bool = false
         static var setCompletion = "setCompletionKey"
         static var getCompletion = "getCompletionKey"
+        static var url = "url"
     }
     
     @IBInspectable
@@ -48,6 +49,15 @@ public extension UIImageView {
         }
     }
     
+    var url: URL? {
+        set {
+            objc_setAssociatedObject(self, &AssociatedCustomProperties.url, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+        get {
+            return objc_getAssociatedObject(self, &AssociatedCustomProperties.url) as? URL
+        }
+    }
+    
     fileprivate var getCompletion: GetCompletionBlock? {
         set {
             objc_setAssociatedObject(self, &AssociatedCustomProperties.getCompletion, newValue, objc_AssociationPolicy.OBJC_ASSOCIATION_COPY_NONATOMIC)
@@ -65,7 +75,8 @@ public extension UIImageView {
         }
     }
     
-    public func getFaceRecognizeImage(from image: UIImage?, completion: GetCompletionBlock?) {
+    public func getFaceRecognizeImage(from image: UIImage?, url: URL? = nil, completion: GetCompletionBlock?) {
+        self.url = url
         self.getCompletion = completion
         setImageAndFocusOnFaces(image: image)
     }
@@ -183,7 +194,7 @@ public extension UIImageView {
                 let rect = CGRect(x: offset.x, y: offset.y, width: finalSize.width, height: finalSize.height)
                 guard let croppedImage = cropToBounds(image: newImage, rect: rect) else { return }
                 
-                getCompletion(croppedImage)
+                getCompletion(croppedImage, url)
             } else {
                 self.image = newImage
                 
@@ -212,7 +223,7 @@ public extension UIImageView {
         DispatchQueue.main.async {
             // avoid redundant layer when focus on faces for the image of cell specified in UITableView
             if let getCompletion = self.getCompletion {
-                getCompletion(image)
+                getCompletion(image, self.url)
             } else {
                 self.imageLayer().removeFromSuperlayer()
                 self.image = image
